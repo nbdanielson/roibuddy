@@ -49,7 +49,7 @@ else:
     data_path = ''
 
 # TODO: move this in to an option somewhere in the GUI
-ENABLE_MOUSE_WHEEL_Z_SCROLL = True
+ENABLE_MOUSE_WHEEL_Z_SCROLL = False
 
 
 def debug_trace():
@@ -1476,8 +1476,9 @@ class RoiBuddy(QMainWindow, Ui_ROI_Buddy):
             for roi_idx, roi in enumerate(roi_polygons[tSeries]):
                 multi_poly = MultiPolygon(roi)
                 if not multi_poly.is_valid:
+                    shape = (tSeries.num_planes, ) + tSeries.transform_shape
                     multi_poly = mask2poly(
-                        poly2mask(multi_poly, active_tSeries.transform_shape))
+                        poly2mask(multi_poly, shape))
                 roi_polygons[tSeries][roi_idx] = multi_poly
 
         condensed_distance_matrix = []
@@ -1889,8 +1890,22 @@ class UI_tSeries(QListWidgetItem):
                     target = target_tSeries.dataset.time_averages[
                         plane, :, :, target_active_channel]
 
+                    try:
+                        transform = estimate_array_transform(
+                            ref, target, method='affine')
+                    except TransformError:
+                        pass
+                    ref = ca1pc._processed_image_ca1pc(
+                        self.dataset,
+                        channel_idx=ref_active_channel,
+                        x_diameter=10, y_diameter=10)[plane]
+                    target = ca1pc._processed_image_ca1pc(
+                        target_tSeries.dataset,
+                        channel_idx=target_active_channel,
+                        x_diameter=10, y_diameter=10)[plane]
                     transform = estimate_array_transform(
                         ref, target, method='affine')
+
                     # translate into same space
                     transform += tf.AffineTransform(
                         translation=target_tSeries.shape[::-1])
